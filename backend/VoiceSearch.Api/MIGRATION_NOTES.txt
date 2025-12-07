@@ -1,0 +1,1 @@
+Run `dotnet ef migrations add InitialCreate` and `dotnet ef database update` in the backend project folder to create the SQLite DB and seed data.

@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Voice Search - Full AI Demo</title>
+  <style>body{font-family:Arial;padding:20px;}button{margin:6px};#results div{margin:8px 0;padding:8px;border-bottom:1px solid #eee}</style>
+</head>
+<body>
+  <h2>Voice Search - Demo</h2>
+  <div>
+    <strong>Client STT (Web Speech API)</strong><br/>
+    <button id="startBtn">🎤 Start</button>
+    <input id="query" placeholder="Or type here" style="width:60%" />
+    <button id="searchBtn">Search (semantic)</button>
+  </div>
+  <div style="margin-top:16px;">
+    <strong>Upload audio (server STT)</strong><br/>
+    <input type="file" id="audioFile" accept="audio/*" />
+    <button id="uploadBtn">Upload & Search</button>
+  </div>
+  <h3>Results</h3>
+  <div id="queryText"></div>
+  <div id="results"></div>
+<script>
+const startBtn = document.getElementById('startBtn');
+const searchBtn = document.getElementById('searchBtn');
+const queryInput = document.getElementById('query');
+const resultsDiv = document.getElementById('results');
+const queryTextDiv = document.getElementById('queryText');
+let recognition;
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.lang = 'en-IN';
+  recognition.interimResults = false;
+  recognition.continuous = false;
+  recognition.onresult = (e) => {
+    const txt = e.results[0][0].transcript;
+    queryInput.value = txt;
+    queryTextDiv.innerText = 'Transcript: ' + txt;
+  };
+} else {
+  startBtn.disabled = true; startBtn.innerText = 'Voice not supported';
+}
+startBtn.onclick = () => recognition && recognition.start();
+searchBtn.onclick = async () => {
+  const q = queryInput.value.trim();
+  if (!q) return alert('Type or speak a query first');
+  queryTextDiv.innerText = 'Query: ' + q;
+  resultsDiv.innerText = 'Searching...';
+  const res = await fetch(`/api/search/semantic?q=${encodeURIComponent(q)}`);
+  const json = await res.json();
+  render(json);
+};
+document.getElementById('uploadBtn').onclick = async () => {
+  const file = document.getElementById('audioFile').files[0];
+  if (!file) return alert('Choose an audio file');
+  const form = new FormData();
+  form.append('audioFile', file);
+  form.append('language', 'en-US');
+  resultsDiv.innerText = 'Uploading + Recognizing...';
+  const res = await fetch('/api/voice/search', { method: 'POST', body: form });
+  const json = await res.json();
+  queryTextDiv.innerText = 'Transcript: ' + json.query;
+  render(json.results || json);
+};
+function render(items){ if (!items || items.length === 0) { resultsDiv.innerHTML = '<i>No results</i>'; return; } resultsDiv.innerHTML = items.map(i => `<div><strong>${i.name}</strong><br/>${i.description}</div>`).join(''); }
+</script>
+</body>
+</html>
